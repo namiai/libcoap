@@ -1353,6 +1353,7 @@ reset:
   return -1;
 }
 
+#if !defined(ESPIDF_VERSION)
 static void
 mbedtls_debug_out(void *ctx COAP_UNUSED, int level,
                   const char *file, int line, const char *str) {
@@ -1380,6 +1381,7 @@ mbedtls_debug_out(void *ctx COAP_UNUSED, int level,
   }
   coap_log(log_level, "%s:%04d: %s", file, line, str);
 }
+#endif /* !defined(ESPIDF_VERSION) */
 
 #if !COAP_DISABLE_TCP
 /*
@@ -1581,8 +1583,9 @@ static coap_mbedtls_env_t *coap_dtls_new_mbedtls_env(coap_session_t *c_session,
   mbedtls_ssl_set_timer_cb(&m_env->ssl, &m_env->timer,
                            mbedtls_timing_set_delay,
                            mbedtls_timing_get_delay);
-
+#if !defined(ESPIDF_VERSION)
   mbedtls_ssl_conf_dbg(&m_env->conf, mbedtls_debug_out, stdout);
+#endif /* !defined(ESPIDF_VERSION) */
   return m_env;
 
 fail:
