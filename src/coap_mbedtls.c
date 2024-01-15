@@ -1885,29 +1885,37 @@ int coap_dtls_send(coap_session_t *c_session,
   }
   c_session->dtls_event = -1;
   if (m_env->established) {
-    ret = mbedtls_ssl_write(&m_env->ssl, (const unsigned char*) data, data_len);
-    if (ret <= 0) {
-      switch (ret) {
-      case MBEDTLS_ERR_SSL_WANT_READ:
-      case MBEDTLS_ERR_SSL_WANT_WRITE:
-        ret = 0;
+    ret = 0;
+    do {
+      int res = mbedtls_ssl_write(&m_env->ssl, (const unsigned char*) data, data_len);
+      if (res <= 0) {
+        switch (res) {
+        case MBEDTLS_ERR_SSL_WANT_READ:
+        case MBEDTLS_ERR_SSL_WANT_WRITE:
+          break;
+        case MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE:
+          c_session->dtls_event = COAP_EVENT_DTLS_CLOSED;
+          ret = -1;
+          break;
+        default:
+          coap_log(LOG_WARNING,
+                  "coap_tls_write: "
+                  "returned -0x%x: '%s'\n",
+                  -ret, get_error_string(ret));
+          ret = -1;
+          break;
+        }
+        if (ret == -1) {
+          coap_log(LOG_WARNING, "coap_dtls_send: cannot send PDU\n");
+        }
         break;
-      case MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE:
-        c_session->dtls_event = COAP_EVENT_DTLS_CLOSED;
-        ret = -1;
-        break;
-      default:
-        coap_log(LOG_WARNING,
-                 "coap_dtls_send: "
-                 "returned -0x%x: '%s'\n",
-                 -ret, get_error_string(ret));
-        ret = -1;
-        break;
+      } else {
+        assert(res <= data_len);
+        ret += res;
+        data += res;
+        data_len -= res;
       }
-      if (ret == -1) {
-        coap_log(LOG_WARNING, "coap_dtls_send: cannot send PDU\n");
-      }
-    }
+    } while (data_len > 0);
   } else {
     ret = do_mbedtls_handshake(c_session, m_env);
     if (ret == 1) {
@@ -2287,30 +2295,37 @@ ssize_t coap_tls_write(coap_session_t *c_session,
   }
   c_session->dtls_event = -1;
   if (m_env->established) {
-    ret = mbedtls_ssl_write(&m_env->ssl, (const unsigned char*) data, data_len);
-    if (ret <= 0) {
-      switch (ret) {
-      case MBEDTLS_ERR_SSL_WANT_READ:
-      case MBEDTLS_ERR_SSL_WANT_WRITE:
-        ret = 0;
+    ret = 0;
+    do {
+      int res = mbedtls_ssl_write(&m_env->ssl, (const unsigned char*) data, data_len);
+      if (res <= 0) {
+        switch (res) {
+        case MBEDTLS_ERR_SSL_WANT_READ:
+        case MBEDTLS_ERR_SSL_WANT_WRITE:
+          break;
+        case MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE:
+          c_session->dtls_event = COAP_EVENT_DTLS_CLOSED;
+          ret = -1;
+          break;
+        default:
+          coap_log(LOG_WARNING,
+                  "coap_tls_write: "
+                  "returned -0x%x: '%s'\n",
+                  -ret, get_error_string(ret));
+          ret = -1;
+          break;
+        }
+        if (ret == -1) {
+          coap_log(LOG_WARNING, "coap_dtls_send: cannot send PDU\n");
+        }
         break;
-      case MBEDTLS_ERR_NET_CONN_RESET:
-      case MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE:
-        c_session->dtls_event = COAP_EVENT_DTLS_CLOSED;
-        ret = -1;
-        break;
-      default:
-        coap_log(LOG_WARNING,
-                 "coap_tls_write: "
-                 "returned -0x%x: '%s'\n",
-                 -ret, get_error_string(ret));
-        ret = -1;
-        break;
+      } else {
+        assert(res <= data_len);
+        ret += res;
+        data += res;
+        data_len -= res;
       }
-      if (ret == -1) {
-        coap_log(LOG_WARNING, "coap_tls_write: cannot send PDU\n");
-      }
-    }
+    } while (data_len > 0);
   } else {
     ret = do_mbedtls_handshake(c_session, m_env);
     if (ret == 1) {
