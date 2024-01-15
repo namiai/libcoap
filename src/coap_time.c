@@ -37,6 +37,12 @@ static coap_tick_t coap_clock_offset = 0;
 #define COAP_CLOCK CLOCK_REALTIME
 #endif
 
+#ifdef COAP_CLOCK
+// Force monotonic clock to avoid spurious errors in function using coap_ticks to compute time differences
+#undef COAP_CLOCK
+#define COAP_CLOCK CLOCK_MONOTONIC
+#endif
+
 #ifdef HAVE_WINSOCK2_H
 static int
 gettimeofday(struct timeval *tp, TIME_ZONE_INFORMATION *tzp) {
